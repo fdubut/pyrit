@@ -27,6 +27,7 @@ from pyrit.prompt_converter import (
     ColloquialWordswapConverter,
     DiacriticConverter,
     EmojiConverter,
+    FirstLetterConverter,
     FlipConverter,
     FuzzerConverter,
     HumanInTheLoopConverter,
@@ -93,6 +94,14 @@ async def test_base64_prompt_converter() -> None:
     converter = Base64Converter()
     output = await converter.convert_async(prompt="test", input_type="text")
     assert output.output_text == "dGVzdA=="
+    assert output.output_type == "text"
+
+
+@pytest.mark.asyncio
+async def test_first_letter_converter():
+    converter = FirstLetterConverter()
+    output = await converter.convert_async(prompt="Lorem ipsum dolor sit amet", input_type="text")
+    assert output.output_text == "L i d s a"
     assert output.output_type == "text"
 
 
