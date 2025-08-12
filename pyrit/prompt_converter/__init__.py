@@ -39,7 +39,6 @@ from pyrit.prompt_converter.fuzzer_converter import (
 from pyrit.prompt_converter.human_in_the_loop_converter import HumanInTheLoopConverter
 from pyrit.prompt_converter.image_compression_converter import ImageCompressionConverter
 from pyrit.prompt_converter.insert_punctuation_converter import InsertPunctuationConverter
-from pyrit.prompt_converter.job_role_converter import JobRoleGenerator
 from pyrit.prompt_converter.leetspeak_converter import LeetspeakConverter
 from pyrit.prompt_converter.llm_generic_text_converter import LLMGenericTextConverter
 from pyrit.prompt_converter.malicious_question_generator_converter import MaliciousQuestionGeneratorConverter
@@ -69,6 +68,7 @@ from pyrit.prompt_converter.zalgo_converter import ZalgoConverter
 from pyrit.prompt_converter.zero_width_converter import ZeroWidthConverter
 from pyrit.prompt_converter.toxic_sentence_generator_converter import ToxicSentenceGeneratorConverter
 from pyrit.prompt_converter.denylist_converter import DenylistConverter
+from pyrit.prompt_converter.job_role_converter import JobRoleConverter
 from pyrit.prompt_converter.text_jailbreak_converter import TextJailbreakConverter
 from pyrit.prompt_converter.template_segment_converter import TemplateSegmentConverter
 
@@ -108,7 +108,7 @@ __all__ = [
     "InsertPunctuationConverter",
     "TemplateSegmentConverter",
     "TextJailbreakConverter",
-    "JobRoleGenerator",
+    "JobRoleConverter",
     "LeetspeakConverter",
     "LLMGenericTextConverter",
     "MaliciousQuestionGeneratorConverter",

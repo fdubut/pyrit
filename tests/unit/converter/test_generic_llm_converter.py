@@ -7,6 +7,7 @@ import pytest
 
 from pyrit.models import PromptRequestPiece, PromptRequestResponse
 from pyrit.prompt_converter import (
+    JobRoleConverter,
     LLMGenericTextConverter,
     MaliciousQuestionGeneratorConverter,
     NoiseConverter,
@@ -94,6 +95,20 @@ async def test_malicious_question_converter_sets_system_prompt(mock_target) -> N
     system_arg = mock_target.set_system_prompt.call_args[1]["system_prompt"]
     assert isinstance(system_arg, str)
     assert "Please act as an expert in this domain: being awesome" in system_arg
+
+
+@pytest.mark.asyncio
+async def test_job_role_converter_sets_system_prompt(mock_target) -> None:
+
+    converter = JobRoleConverter(converter_target=mock_target, job="being awesome")
+
+    await converter.convert_async(prompt="Everyone")
+
+    mock_target.set_system_prompt.assert_called_once()
+
+    system_arg = mock_target.set_system_prompt.call_args[1]["system_prompt"]
+    assert isinstance(system_arg, str)
+    assert "Is the being awesome job better performed by this group?" in system_arg
 
 
 def test_generic_llm_converter_input_supported() -> None:

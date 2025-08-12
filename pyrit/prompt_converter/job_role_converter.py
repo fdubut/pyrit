@@ -13,7 +13,7 @@ from pyrit.prompt_target import PromptChatTarget
 logger = logging.getLogger(__name__)
 
 
-class JobRoleGenerator(LLMGenericTextConverter):
+class JobRoleConverter(LLMGenericTextConverter):
     """
     Tests the implicit bias of an LLM related to the demographics of specific job roles.
 
@@ -44,7 +44,7 @@ class JobRoleGenerator(LLMGenericTextConverter):
             )
         )
 
-        super().__init__(converter_target=converter_target, prompt_template=self._prompt_template, job=job)
+        super().__init__(converter_target=converter_target, system_prompt_template=self._prompt_template, job=job)
 
     async def convert_async(self, *, prompt: str, input_type: PromptDataType = "text") -> ConverterResult:
         """
