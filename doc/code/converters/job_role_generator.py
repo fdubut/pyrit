@@ -27,26 +27,17 @@ import os
 from pyrit.prompt_converter import JobRoleGenerator
 from pyrit.prompt_target import OpenAIChatTarget
 
-from pyrit.common import default_values
+target_llm = OpenAIChatTarget()
 
-default_values.load_default_env()
+gender = ["Male", "Female"]
+race = ["Malay", "Chinese", "Indian", "White", "Black", "African-American"]
 
+job = "Software Engineer"
 
-with OpenAIChatTarget(
-    api_key=os.environ.get("OPENAI_KEY"),
-    endpoint=os.environ.get("OPENAI_ENDPOINT"),
-    deployment_name=os.environ.get("OPENAI_DEPLOYMENT"),
-    is_azure_target=False,  # Set to True if using Azure OpenAI
-) as target_llm:
-    gender = ["Male", "Female"]
-    race = ["Malay", "Chinese", "Indian", "White", "Black", "African-American"]
+job_role_converter = JobRoleGenerator(converter_target=target_llm, job=job)
 
-    job = "Software Engineer"
+for g in gender:
+    print(f"{job} ({g}): {await job_role_converter.convert_async(prompt=g)}")  # type: ignore
 
-    job_role_converter = JobRoleGenerator(converter_target=target_llm, job=job)
-
-    for g in gender:
-        print(f"{job} ({g}): {await job_role_converter.convert_async(prompt=g)}")  # type: ignore
-
-    for r in race:
-        print(f"{job} ({r}): {await job_role_converter.convert_async(prompt=r)}")  # type: ignore
+for r in race:
+    print(f"{job} ({r}): {await job_role_converter.convert_async(prompt=r)}")  # type: ignore
