@@ -89,6 +89,9 @@ class Multilingual(Scenario):
     VERSION: int = 1
     BASELINE_ATTACK_POLICY: ClassVar[BaselineAttackPolicy] = BaselineAttackPolicy.Enabled
 
+    # Default language list
+    _DEFAULT_LANGUAGES_SEED_PROMPT_PATH = DATASETS_PATH / "lexicons" / "languages_most_spoken.yaml"
+
     @classmethod
     def required_datasets(cls) -> list[str]:
         """Return a list of dataset names required by this scenario."""
@@ -161,7 +164,7 @@ class Multilingual(Scenario):
         Returns:
             list[str]: The list of most-spoken languages.
         """
-        dataset = SeedDataset.from_yaml_file(DATASETS_PATH / "lexicons" / "languages_most_spoken.yaml")
+        dataset = SeedDataset.from_yaml_file(cls._DEFAULT_LANGUAGES_SEED_PROMPT_PATH)
         return [str(seed.value) for seed in dataset.seeds]
 
     def _resolve_languages(self) -> list[str]:
