@@ -82,7 +82,7 @@ def _build_multilingual_technique() -> type[ScenarioTechnique]:
 class Multilingual(Scenario):
     """
     Multilingual scenario implementation for PyRIT.
-    
+
     Tests how vulnerable a model is to non-English language use.
     """
 
@@ -192,8 +192,7 @@ class Multilingual(Scenario):
 
         if num_languages and languages:
             raise ValueError(
-                "Please provide only one of `num_languages` (random selection)"
-                " or `languages` (specific selection)."
+                "Please provide only one of `num_languages` (random selection) or `languages` (specific selection)."
             )
 
         if languages:

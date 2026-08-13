@@ -104,12 +104,8 @@ class TestMultilingual:
             scenario = Multilingual(
                 adversarial_chat=mock_adversarial_chat,
                 objective_scorer=mock_objective_scorer,
-            )                    
-            scenario.set_params_from_args(
-                args={
-                    "objective_target": mock_objective_target
-                }
             )
+            scenario.set_params_from_args(args={"objective_target": mock_objective_target})
             await scenario.initialize_async()
             assert scenario._resolved_languages == selected
             assert sample.call_args.args[1] == _DEFAULT_NUM_LANGUAGES
@@ -127,12 +123,7 @@ class TestMultilingual:
                 adversarial_chat=mock_adversarial_chat,
                 objective_scorer=mock_objective_scorer,
             )
-            scenario.set_params_from_args(
-                args={
-                    "objective_target": mock_objective_target,
-                    "num_languages": 3
-                }
-            )
+            scenario.set_params_from_args(args={"objective_target": mock_objective_target, "num_languages": 3})
             await scenario.initialize_async()
             assert scenario._resolved_languages == selected
             assert sample.call_args.args[1] == 3
@@ -146,10 +137,7 @@ class TestMultilingual:
                 objective_scorer=mock_objective_scorer,
             )
             scenario.set_params_from_args(
-                args={
-                    "objective_target": mock_objective_target,
-                    "languages": ["Canadian French", "Spanish"]
-                }
+                args={"objective_target": mock_objective_target, "languages": ["Canadian French", "Spanish"]}
             )
             await scenario.initialize_async()
 
@@ -201,9 +189,7 @@ class TestMultilingual:
         metadata = scenario._build_initial_scenario_metadata()
         assert metadata[_LANGUAGES_METADATA_KEY] == ["French", "Spanish"]
 
-    def test_resolve_languages_replays_persisted_set_on_resume(
-        self, mock_adversarial_chat, mock_objective_scorer
-    ):
+    def test_resolve_languages_replays_persisted_set_on_resume(self, mock_adversarial_chat, mock_objective_scorer):
         scenario = Multilingual(
             adversarial_chat=mock_adversarial_chat,
             objective_scorer=mock_objective_scorer,
@@ -223,12 +209,7 @@ class TestMultilingual:
                 adversarial_chat=mock_adversarial_chat,
                 objective_scorer=mock_objective_scorer,
             )
-            scenario.set_params_from_args(
-                args={
-                    "objective_target": mock_objective_target,
-                    "languages": ["French"]
-                }
-            )
+            scenario.set_params_from_args(args={"objective_target": mock_objective_target, "languages": ["French"]})
             await scenario.initialize_async()
 
         assert scenario._atomic_attacks[0].atomic_attack_name == "baseline"

@@ -5,7 +5,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.4
+#       jupytext_version: 1.19.5
 # ---
 
 # %% [markdown]
@@ -191,6 +191,46 @@ scenario.set_params_from_args(  # type: ignore
         "objective_target": objective_target,
         "scenario_techniques": [JailbreakTechnique.DEFAULT],
         "jailbreak_names": ["aim.yaml"],
+        "dataset_config": dataset_config,
+    }
+)
+await scenario.initialize_async()  # type: ignore
+
+scenario_result = await scenario.run_async()  # type: ignore
+
+# %%
+await output_scenario_async(scenario_result)
+
+# %% [markdown]
+# ## Multilingual
+#
+# Tests whether target safeguards remain effective when harmful objectives are presented in other
+# languages. The `prompt_sending` technique translates each objective into every selected language,
+# while `random_translation` translates individual words using the selected language pool. A baseline
+# sends each objective without translation and is included by default.
+#
+# ```bash
+# pyrit_scan airt.multilingual \
+#   --initializers target load_default_datasets \
+#   --target openai_chat \
+#   --dataset-names harmbench \
+#   --max-dataset-size 1
+# ```
+#
+# **Available techniques:** prompt_sending, random_translation. By default, both techniques run against
+# two randomly selected languages. Pass `num_languages` to change the random sample size or `languages`
+# to provide an explicit list; the two selectors are mutually exclusive.
+
+# %%
+from pyrit.scenario.airt import Multilingual
+
+dataset_config = DatasetAttackConfiguration(dataset_names=["harmbench"], max_dataset_size=1)
+
+scenario = Multilingual()
+scenario.set_params_from_args(  # type: ignore
+    args={
+        "objective_target": objective_target,
+        "languages": ["French", "Spanish", "German"],
         "dataset_config": dataset_config,
     }
 )
