@@ -6,18 +6,16 @@ from __future__ import annotations
 import logging
 import random
 from functools import cache
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 from pyrit.common import apply_defaults
 from pyrit.common.path import DATASETS_PATH
-from pyrit.converter import Converter, RandomTranslationConverter, TranslationConverter
-from pyrit.executor.attack import AttackConverterConfig, AttackScoringConfig, PromptSendingAttack
+from pyrit.converter import RandomTranslationConverter, TranslationConverter
+from pyrit.executor.attack import PromptSendingAttack
 from pyrit.models import Parameter, SeedDataset
-from pyrit.prompt_normalizer import ConverterConfiguration
 from pyrit.registry.components.attack_technique_registry import AttackTechniqueRegistry
 from pyrit.scenario.core import (
     AtomicAttack,
-    AttackTechnique,
     AttackTechniqueFactory,
     BaselineAttackPolicy,
     DatasetAttackConfiguration,
@@ -25,10 +23,13 @@ from pyrit.scenario.core import (
     ScenarioTechnique,
     get_default_adversarial_target,
 )
-from pyrit.scenario.core.matrix_atomic_attack_builder import build_baseline_atomic_attack
+from pyrit.scenario.core.matrix_atomic_attack_builder import (
+    MatrixAtomicAttackBuilder,
+    build_baseline_atomic_attack,
+    resolve_technique_factories,
+)
 
 if TYPE_CHECKING:
-    from pyrit.models import AttackSeedGroup
     from pyrit.prompt_target import PromptTarget
     from pyrit.scenario.core import ScenarioTechnique
     from pyrit.scenario.core.scenario_context import ScenarioContext
@@ -40,42 +41,55 @@ logger = logging.getLogger(__name__)
 # replays the exact same set even when a random sample was drawn.
 _LANGUAGES_METADATA_KEY = "languages"
 
-# How many languages a bare run draws at random. Kept small so the default run stays fast
-# — languages multiply against objectives and techniques. Override per run with
+# How many languages a bare run draws at random. Languages multiply against objectives and
+# techniques for fixed translation. Override per run with
 # ``num_languages`` (random count) or ``languages`` (an explicit set).
-_DEFAULT_NUM_LANGUAGES = 2
+_DEFAULT_NUM_LANGUAGES = 5
 
-#  Scenario-local default techniques.
-#   - ``prompt_sending`` sends the objective in each selected language.
-#   - ``random_translation`` sends the objective with word-level random translations.
 _PROMPT_SENDING = "prompt_sending"
+_TRANSLATION = "translation"
 _RANDOM_TRANSLATION = "random_translation"
+TranslationStrategy = Literal["translation", "random_translation"]
+
+
+@cache
+def _prompt_sending_factory() -> AttackTechniqueFactory:
+    """
+    Build the scenario-local bare prompt-sending technique factory.
+
+    Returns:
+        AttackTechniqueFactory: The prompt-sending factory.
+    """
+    return AttackTechniqueFactory(
+        name=_PROMPT_SENDING,
+        attack_class=PromptSendingAttack,
+        technique_tags=["single_turn"],
+    )
+
+
+def _extra_default_factories() -> dict[str, AttackTechniqueFactory]:
+    """Return scenario-local technique factories keyed by name."""
+    return {_PROMPT_SENDING: _prompt_sending_factory()}
 
 
 @cache
 def _build_multilingual_technique() -> type[ScenarioTechnique]:
     """
-    Build the Multilingual technique class from scenario-local factories.
+    Build the Multilingual technique class from text-compatible registered factories.
 
     Returns:
         type[ScenarioTechnique]: The dynamically generated technique enum class.
     """
+    registry = AttackTechniqueRegistry.get_registry_singleton()
     factories = [
-        AttackTechniqueFactory(
-            name=_PROMPT_SENDING,
-            attack_class=PromptSendingAttack,
-            technique_tags=["single_turn"],
-        ),
-        AttackTechniqueFactory(
-            name=_RANDOM_TRANSLATION,
-            attack_class=PromptSendingAttack,
-            technique_tags=["single_turn"],
-        ),
+        factory
+        for factory in list(registry.get_factories_or_raise().values()) + list(_extra_default_factories().values())
+        if factory.can_append_request_converter(converter_type=TranslationConverter)
     ]
     return AttackTechniqueRegistry.build_technique_class_from_factories(  # type: ignore[ty:invalid-return-type]
         class_name="MultilingualTechnique",
         factories=factories,
-        default_tags={"single_turn"},
+        default_names={_PROMPT_SENDING},
     )
 
 
@@ -103,7 +117,7 @@ class Multilingual(Scenario):
         Declare the run-configurable parameters this scenario accepts (CLI / config file).
 
         Returns:
-            list[Parameter]: The language selectors (``num_languages``, ``languages``).
+            list[Parameter]: The language selectors and translation strategy selector.
         """
         return [
             Parameter(
@@ -121,7 +135,26 @@ class Multilingual(Scenario):
                 param_type=list[str],
                 default=None,
             ),
+            Parameter(
+                name="translation_strategies",
+                description=(
+                    "Translation strategies to run: translation translates the complete objective into each "
+                    "selected language; random_translation translates words using the selected language pool."
+                ),
+                param_type=list[TranslationStrategy],
+                default=[_TRANSLATION, _RANDOM_TRANSLATION],
+            ),
         ]
+
+    @classmethod
+    def supported_parameters(cls) -> list[Parameter]:
+        """
+        Declare supported inputs, excluding user-supplied technique converters.
+
+        Returns:
+            list[Parameter]: The supported scenario parameters.
+        """
+        return [parameter for parameter in super().supported_parameters() if parameter.name != "technique_converters"]
 
     @apply_defaults
     def __init__(
@@ -151,7 +184,7 @@ class Multilingual(Scenario):
         super().__init__(
             version=self.VERSION,
             technique_class=technique_class,
-            default_dataset_config=DatasetAttackConfiguration(dataset_names=["harmbench"], max_dataset_size=4),
+            default_dataset_config=DatasetAttackConfiguration(dataset_names=["harmbench"], max_dataset_size=5),
             objective_scorer=self._objective_scorer,
             scenario_result_id=scenario_result_id,
         )
@@ -193,13 +226,15 @@ class Multilingual(Scenario):
         num_languages = self.params.get("num_languages")
         languages = self.params.get("languages")
 
-        if num_languages and languages:
+        if num_languages is not None and languages is not None:
             raise ValueError(
                 "Please provide only one of `num_languages` (random selection) or `languages` (specific selection)."
             )
 
-        if languages:
-            return languages
+        if languages is not None:
+            if not languages:
+                raise ValueError("languages must contain at least one language.")
+            return list(dict.fromkeys(languages))
 
         count = int(num_languages) if num_languages is not None else _DEFAULT_NUM_LANGUAGES
         if count < 1 or count > len(self._default_languages):
@@ -219,7 +254,7 @@ class Multilingual(Scenario):
 
     async def _build_atomic_attacks_async(self, *, context: ScenarioContext) -> list[AtomicAttack]:
         """
-        Build the selected translation attacks over the resolved objective population.
+        Build the technique x dataset x translation-strategy/language attack matrix.
 
         Args:
             context (ScenarioContext): The resolved runtime inputs for this run.
@@ -237,8 +272,16 @@ class Multilingual(Scenario):
 
         self._resolved_languages = self._resolve_languages()
         adversarial_chat = self._adversarial_chat or get_default_adversarial_target()
-        techniques = {technique.value for technique in context.scenario_techniques}
-        seed_groups = list(context.seed_groups)
+        strategies = set(self.params.get("translation_strategies") or [_TRANSLATION, _RANDOM_TRANSLATION])
+        technique_factories = resolve_technique_factories(
+            context=context,
+            extra_factories=_extra_default_factories(),
+        )
+        builder = MatrixAtomicAttackBuilder(
+            objective_target=context.objective_target,
+            objective_scorer=self._objective_scorer,
+            memory_labels=context.memory_labels,
+        )
 
         atomic_attacks: list[AtomicAttack] = []
         if context.include_baseline:
@@ -246,67 +289,42 @@ class Multilingual(Scenario):
                 build_baseline_atomic_attack(
                     objective_target=context.objective_target,
                     objective_scorer=self._objective_scorer,
-                    seed_groups=seed_groups,
+                    seed_groups=list(context.seed_groups),
                     memory_labels=context.memory_labels,
                 )
             )
 
-        if _PROMPT_SENDING in techniques:
-            atomic_attacks.extend(
-                self._build_atomic_attack(
-                    context=context,
-                    seed_groups=seed_groups,
-                    converter=TranslationConverter(converter_target=adversarial_chat, language=language),
-                    name=f"translation_{language.lower().replace(' ', '_')}",
-                    display_group=language,
+        if _TRANSLATION in strategies:
+            for language in self._resolved_languages:
+                converter = TranslationConverter(converter_target=adversarial_chat, language=language)
+                atomic_attacks.extend(
+                    builder.build(
+                        technique_factories=technique_factories,
+                        dataset_groups=context.seed_groups_by_dataset,
+                        technique_converters={name: [converter] for name in technique_factories},
+                        name_fn=lambda combo, language=language: (
+                            f"{combo.technique_name}_{_TRANSLATION}_"
+                            f"{language.lower().replace(' ', '_')}_{combo.dataset_name}"
+                        ),
+                        display_group_fn=lambda combo, language=language: language,
+                        include_baseline=False,
+                    )
                 )
-                for language in self._resolved_languages
-            )
 
-        if _RANDOM_TRANSLATION in techniques:
-            atomic_attacks.append(
-                self._build_atomic_attack(
-                    context=context,
-                    seed_groups=seed_groups,
-                    converter=RandomTranslationConverter(
-                        converter_target=adversarial_chat,
-                        languages=self._resolved_languages,
-                    ),
-                    name="random_translation",
-                    display_group="Random Translation",
+        if _RANDOM_TRANSLATION in strategies:
+            converter = RandomTranslationConverter(
+                converter_target=adversarial_chat,
+                languages=self._resolved_languages,
+            )
+            atomic_attacks.extend(
+                builder.build(
+                    technique_factories=technique_factories,
+                    dataset_groups=context.seed_groups_by_dataset,
+                    technique_converters={name: [converter] for name in technique_factories},
+                    name_fn=lambda combo: f"{combo.technique_name}_{_RANDOM_TRANSLATION}_{combo.dataset_name}",
+                    display_group_fn=lambda combo: "Random Translation",
+                    include_baseline=False,
                 )
             )
 
         return atomic_attacks
-
-    def _build_atomic_attack(
-        self,
-        *,
-        context: ScenarioContext,
-        seed_groups: list[AttackSeedGroup],
-        converter: Converter,
-        name: str,
-        display_group: str,
-    ) -> AtomicAttack:
-        """
-        Build a prompt-sending atomic attack with one request converter.
-
-        Returns:
-            AtomicAttack: The configured attack and its resolved seed groups.
-        """
-        converter_config = AttackConverterConfig(
-            request_converters=ConverterConfiguration.from_converters(converters=[converter])
-        )
-        attack = PromptSendingAttack(
-            objective_target=context.objective_target,
-            attack_scoring_config=AttackScoringConfig(objective_scorer=self._objective_scorer),
-            attack_converter_config=converter_config,
-        )
-        return AtomicAttack(
-            atomic_attack_name=name,
-            display_group=display_group,
-            attack_technique=AttackTechnique(attack=attack),
-            seed_groups=seed_groups,
-            objective_scorer=self._objective_scorer,
-            memory_labels=context.memory_labels,
-        )
