@@ -217,6 +217,30 @@ class TestMultilingual:
         converters = _request_converters(scenario._atomic_attacks[0])
         assert [type(converter) for converter in converters] == [Base64Converter, TranslationConverter]
 
+    async def test_language_normalization_preserves_unique_atomic_attack_names(
+        self, mock_objective_target, mock_adversarial_chat, mock_objective_scorer, mock_memory_seed_groups
+    ):
+        with _patch_seed_groups(mock_memory_seed_groups):
+            scenario = Multilingual(
+                adversarial_chat=mock_adversarial_chat,
+                objective_scorer=mock_objective_scorer,
+            )
+            scenario.set_params_from_args(
+                args={
+                    "objective_target": mock_objective_target,
+                    "languages": ["Canadian French", "canadian_french", "  SPANISH  ", "spanish"],
+                    "translation_strategies": [_TRANSLATION],
+                    "include_baseline": False,
+                }
+            )
+            await scenario.initialize_async()
+
+        assert scenario._resolved_languages == ["Canadian French", "SPANISH"]
+        assert [attack.atomic_attack_name for attack in scenario._atomic_attacks] == [
+            "prompt_sending_translation_canadian_french_harmbench",
+            "prompt_sending_translation_spanish_harmbench",
+        ]
+
     async def test_mutually_exclusive_selectors_raise(
         self, mock_objective_target, mock_adversarial_chat, mock_objective_scorer, mock_memory_seed_groups
     ):

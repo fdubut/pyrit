@@ -52,6 +52,41 @@ _RANDOM_TRANSLATION = "random_translation"
 TranslationStrategy = Literal["translation", "random_translation"]
 
 
+def _normalize_languages(languages: list[str]) -> list[str]:
+    """
+    Normalize and deduplicate language names while preserving their first spelling.
+
+    Args:
+        languages (list[str]): Language names to normalize.
+
+    Returns:
+        list[str]: Unique normalized language names.
+
+    Raises:
+        ValueError: If a language name is empty after normalization.
+    """
+    normalized_by_key: dict[str, str] = {}
+    for language in languages:
+        normalized = " ".join(language.replace("_", " ").split())
+        if not normalized:
+            raise ValueError("languages must not contain empty language names.")
+        normalized_by_key.setdefault(normalized.casefold(), normalized)
+    return list(normalized_by_key.values())
+
+
+def _language_key(language: str) -> str:
+    """
+    Build the normalized language key used in atomic attack names.
+
+    Args:
+        language (str): A normalized language name.
+
+    Returns:
+        str: The lowercase key with spaces replaced by underscores.
+    """
+    return language.casefold().replace(" ", "_")
+
+
 @cache
 def _prompt_sending_factory() -> AttackTechniqueFactory:
     """
@@ -221,7 +256,7 @@ class Multilingual(Scenario):
             if stored:
                 persisted = (stored[0].metadata or {}).get(_LANGUAGES_METADATA_KEY)
                 if persisted:
-                    return list(persisted)
+                    return _normalize_languages(list(persisted))
 
         num_languages = self.params.get("num_languages")
         languages = self.params.get("languages")
@@ -234,12 +269,12 @@ class Multilingual(Scenario):
         if languages is not None:
             if not languages:
                 raise ValueError("languages must contain at least one language.")
-            return list(dict.fromkeys(languages))
+            return _normalize_languages(languages)
 
         count = int(num_languages) if num_languages is not None else _DEFAULT_NUM_LANGUAGES
         if count < 1 or count > len(self._default_languages):
             raise ValueError(f"num_languages must be between 1 and {len(self._default_languages)}.")
-        return random.sample(self._default_languages, count)
+        return _normalize_languages(random.sample(self._default_languages, count))
 
     def _build_initial_scenario_metadata(self) -> dict[str, Any]:
         """
@@ -303,8 +338,7 @@ class Multilingual(Scenario):
                         dataset_groups=context.seed_groups_by_dataset,
                         technique_converters={name: [converter] for name in technique_factories},
                         name_fn=lambda combo, language=language: (
-                            f"{combo.technique_name}_{_TRANSLATION}_"
-                            f"{language.lower().replace(' ', '_')}_{combo.dataset_name}"
+                            f"{combo.technique_name}_{_TRANSLATION}_{_language_key(language)}_{combo.dataset_name}"
                         ),
                         display_group_fn=lambda combo, language=language: language,
                         include_baseline=False,

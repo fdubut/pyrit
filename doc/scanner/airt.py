@@ -220,9 +220,9 @@ await output_scenario_async(scenario_result)
 #
 # Tests whether target safeguards remain effective when harmful objectives are presented in other
 # languages. A run crosses registered text-compatible attack techniques with datasets and translation
-# strategies. The default `translation` strategy translates each objective into every selected language,
-# whereas the opt-in `random_translation` strategy translates individual words using the full selected
-# language pool. A baseline sends each objective without translation and is included by default.
+# strategies. By default, `translation` translates each objective into every selected language, and
+# `random_translation` translates individual words using the full selected language pool. A baseline
+# sends each objective without translation and is included by default.
 #
 # ```bash
 # pyrit_scan airt.multilingual \
