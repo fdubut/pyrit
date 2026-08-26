@@ -14,7 +14,7 @@ from pyrit.common.lazy_imports import get_lazy_dir, resolve_lazy_export
 if TYPE_CHECKING:
     from pyrit.output.scorer.base import ScorerPrinterBase as ScorerPrinter
     from pyrit.score.batch_scorer import BatchScorer
-    from pyrit.score.conversation_scorer import ConversationScorer, create_conversation_scorer
+    from pyrit.score.conversation_scorer import ConversationScorer, ConversationScoringMode, create_conversation_scorer
     from pyrit.score.float_scale.audio_float_scale_scorer import AudioFloatScaleScorer
     from pyrit.score.float_scale.azure_content_filter_scorer import AzureContentFilterScorer
     from pyrit.score.float_scale.float_scale_score_aggregator import (
@@ -142,6 +142,7 @@ _LAZY_EXPORTS: dict[str, str | tuple[str, str | None]] = {
     "ContentClassifierCategory": "pyrit.score.true_false.self_ask_category_scorer",
     "ContentClassifierPaths": "pyrit.score.true_false.self_ask_category_scorer",
     "ConversationScorer": "pyrit.score.conversation_scorer",
+    "ConversationScoringMode": "pyrit.score.conversation_scorer",
     "CredentialLeakScorer": "pyrit.score.true_false.regex.credential_leak_scorer",
     "DecodingScorer": "pyrit.score.true_false.decoding_scorer",
     "FentanylKeywordScorer": "pyrit.score.true_false.regex.fentanyl_keyword_scorer",
