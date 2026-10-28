@@ -154,6 +154,31 @@ initializers:
 
 Full preload can take several minutes and may require network access, provider credentials, or acceptance of gated dataset licenses. When preloading during local backend startup, increase `server.startup_timeout` if the configured timeout is not long enough.
 
+#### Built-in Scenario Suites
+
+Suite initializers register a read-only scenario suite and the presets it runs. The GUI Scanner lists registered suites under *Scenario suites*, where a single launch submits every preset in order against the selected target. Their presets are hidden from the Scanner's list of individual scanners.
+
+| Initializer | Suite | What It Runs |
+| --- | --- | --- |
+| `horizontal_techniques_suite` | `horizontal_techniques` | One preset per attack technique family (jailbreak templates, multilingual translation, encodings, and character obfuscation), each against every objective in `airt_horizontal_objectives` |
+
+Every preset in `horizontal_techniques` runs the same objectives, so per-family success rates are directly comparable. Each family runs a small representative subset of its techniques, and the baseline runs once, with the jailbreak preset. Each child run records its suite and preset in the `scenario_suite_execution` entry of its result metadata.
+
+```yaml
+initializers:
+  - name: target
+    args:
+      tags:
+        - default
+        - scorer
+  - name: converter
+  - name: scorer
+  - name: technique
+  - name: horizontal_techniques_suite
+```
+
+To build your own suite in code, subclass `ScenarioSuiteInitializer`, set `SUITE_NAME` and `SUITE_DESCRIPTION`, and return the suite's presets in launch order from `_build_presets`. Reference the script from `initialization_scripts`. [Scenario Presets and Suites](../code/scenarios/4_scenario_suites.ipynb) inspects, runs, and defines suites in code.
+
 ### `custom_initializers_source`
 
 Stores custom initializer Python files in a local directory or Azure Blob container. An Azure URI may include a blob-name prefix, which behaves like a folder:

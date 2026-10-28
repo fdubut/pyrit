@@ -66,6 +66,8 @@ PyRIT ships with scenarios organized into the following families:
 
 Each scenario page shows how to run it with minimal configuration.
 
+To run several scenarios together, enable a **scenario suite** such as `horizontal_techniques`. It launches an ordered set of saved scenario configurations (presets) against one target from the GUI Scanner. See [Built-in Scenario Suites](../getting_started/pyrit_conf.md#built-in-scenario-suites) to enable one, and [Scenario Presets and Suites](../code/scenarios/4_scenario_suites.ipynb) for how they work.
+
 ## For Developers
 
 If you want to **build custom scenarios** or understand the programming model behind scenarios, see the [Scenarios Programming Guide](../code/scenarios/0_scenarios.ipynb). For details on attack techniques, dataset configuration, and advanced programmatic usage, see [Common Scenario Parameters](../code/scenarios/1_common_scenario_parameters.ipynb).

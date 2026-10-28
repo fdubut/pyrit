@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from pyrit.setup.initializers.load_default_datasets import LoadDefaultDatasets
     from pyrit.setup.initializers.preload_scenario_metadata import PreloadScenarioMetadata
     from pyrit.setup.initializers.refresh_datasets import RefreshDatasets
+    from pyrit.setup.initializers.scenario_suites import HorizontalTechniquesSuiteInitializer, ScenarioSuiteInitializer
     from pyrit.setup.initializers.scorers import ScorerInitializer
     from pyrit.setup.initializers.targets import TargetInitializer
     from pyrit.setup.initializers.techniques import TechniqueInitializer
@@ -29,6 +30,8 @@ _LAZY_EXPORTS: dict[str, str | tuple[str, str | None]] = {
     "LoadDefaultDatasets": "pyrit.setup.initializers.load_default_datasets",
     "PreloadScenarioMetadata": "pyrit.setup.initializers.preload_scenario_metadata",
     "RefreshDatasets": "pyrit.setup.initializers.refresh_datasets",
+    "ScenarioSuiteInitializer": "pyrit.setup.initializers.scenario_suites",
+    "HorizontalTechniquesSuiteInitializer": "pyrit.setup.initializers.scenario_suites",
 }
 
 __all__ = list(_LAZY_EXPORTS)
